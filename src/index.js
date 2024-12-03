@@ -1,11 +1,18 @@
 #!/usr/bin/env node
 import fs from 'node:fs';
+import path, {dirname} from 'node:path';
+import { fileURLToPath } from 'node:url'
 import {exec, execSync} from 'node:child_process';
 import {program} from 'commander';
 import inquirer from 'inquirer';
 import chalk from 'chalk';
 import ping from 'node-http-ping';
 import registries from '../registries.json' assert { type : 'json' };
+
+// 获取 __filename 的 ESM 写法
+const __filename = fileURLToPath(import.meta.url)
+// 获取 __dirname 的 ESM 写法
+const __dirname = dirname(fileURLToPath(import.meta.url))
 
 let json = fs.readFileSync('../package.json', 'utf-8');
 json = JSON.parse(json);
@@ -16,6 +23,15 @@ program.version(json.version);
 
 program
   .option('-a, --numberA <value>', 'First number');
+
+const whiteList = [
+    'npm',
+    'yarn',
+    'tencent',
+    'cnpm',
+    'taobao',
+    'npmMirror'
+];
 
 const getOrigin = async () => {
     return await execSync('npm get registry', { encoding: "utf-8" })
@@ -128,7 +144,6 @@ program.command('add').description('自定义增加npm镜像源').action(async (
             }
         }
     ]).then((result) => {
-        console.log(result);
         const {name = '', url = ''} = result;
 
         const del = (url) => {
@@ -142,14 +157,170 @@ program.command('add').description('自定义增加npm镜像源').action(async (
             }
         };
 
-        console.log(name);
         registries[name] = {
             home: url.trim(),
             registry: url.trim(),
             ping: del(url.trim())
         }
-        
+
+        try {
+            fs.writeFileSync(path.join(__dirname, '../registries.json'), JSON.stringify(registries));
+            console.log(chalk.green('添加npm源成功！'));
+        }
+        catch (err) {
+            console.log(chalk.red('添加npm源失败！', err));
+        }
     })
+})
+
+// 删除npm镜像源
+program.command('delete').description('删除指定的npm镜像源').action(async () => {
+    const keys = Object.keys(registries);
+    if (keys.length === whiteList.length) {
+        console.log(chalk.red('当前没有可以删除的npm镜像源'));
+    }
+    else {
+        const diffKeys = keys.filter(item => {
+            return !whiteList.includes(item);
+        });
+
+        inquirer.prompt([
+            {
+                type: 'list',
+                name: 'delete-npm',  
+                message: '请选择一个要删除的npm镜像源：',  
+                choices: diffKeys, 
+            }
+        ]).then(async res => {
+            const current = await getOrigin();
+            if (current.trim() === registries[res['delete-npm']].registry.trim()) {
+                consol.log(chalk.red(`当前还在使用该镜像${registries[res['delete-npm']].registry},请切换其他镜像删除!`));
+            }
+            else {
+                try {
+                    delete registries[res['delete-npm']];
+                    
+                    fs.writeFileSync(path.join(__dirname, '../registries.json'), JSON.stringify(registries, null, '\t'));
+
+                    console.log(chalk.green(`删除镜像${res['delete-npm']}成功!`));
+                }
+                catch (err) {
+                    console.log(chalk.red(`删除镜像${res['delete-npm']}失败，请重新尝试!`));
+                }
+            }
+        })
+    }
+})
+
+// 重命名自定义npm镜像源
+program.command('rename').description('重命名自定义npm镜像源').action(async () => {
+    const keys = Object.keys(registries);
+    if (keys.length === whiteList.length) {
+        console.log(chalk.red('当前没有可以重新自定义名称的npm镜像源'));
+    }
+    else {
+        const diffKeys = keys.filter(item => {
+            return !whiteList.includes(item);
+        });
+
+        inquirer.prompt([
+            {
+                type: 'list',
+                name: 'npm',  
+                message: '请选择一个要删除的npm镜像源：',  
+                choices: diffKeys,
+            },
+            {
+                type: 'input',
+                name: 'name',  
+                message: '请输入要重新命名的名称：',
+                validate(answer) {
+                    const keys = Object.keys(registries)
+                    if (keys.includes(answer)) {
+                        return `不能起名${answer}跟保留字冲突`
+                    }
+                    if (!answer.trim()) {
+                        return `名称不能为空`
+                    }
+                    return true;
+                }
+            }
+        ]).then(async res => {
+            registries[res['name']] = Object.assign({}, registries[res['npm']]);
+
+            try {
+                delete registries[res['npm']];
+
+                fs.writeFileSync(path.join(__dirname, '../registries.json'), JSON.stringify(registries, null, '\t'));
+
+                console.log(chalk.green(`重命名镜像${res['npm']}成功!`));
+            }
+            catch (err) {
+                console.log(chalk.red(`重命名镜像${res['npm']}失败，请重新尝试!`));
+            }
+        })
+    }
+})
+
+// 重新编辑自定义的npm镜像源
+program.command('edit').description('重新编辑自定义的npm镜像源').action(async () => {
+    const keys = Object.keys(registries);
+    if (keys.length === whiteList.length) {
+        console.log(chalk.red('当前没有可以重新编辑的npm镜像源'));
+    }
+    else {
+        const diffKeys = keys.filter(item => {
+            return !whiteList.includes(item);
+        });
+
+        inquirer.prompt([
+            {
+                type: 'list',
+                name: 'npm',  
+                message: '请选择一个要删除的npm镜像源：',  
+                choices: diffKeys,
+            },
+            {
+                type: 'input',
+                name: 'url',  
+                message: '请输入要重新命名的名称：',
+                validate(answer) {
+                    if (!answer.trim()) {
+                        return `名称不能为空`
+                    }
+                    return true;
+                }
+            }
+        ]).then(async res => {
+            const {npm = '', url = ''} = res;
+
+            const del = (url) => {
+                const temp = url.split('');
+                if (temp && temp.length !== 0 && temp[temp.length - 1] === '/') {
+                    temp.pop();
+                    return temp.join('');
+                }
+                else {
+                    return temp.join('');
+                }
+            };
+
+            registries[npm] = {
+                home: url.trim(),
+                registry: url.trim(),
+                ping: del(url.trim())
+            }
+
+            try {
+                fs.writeFileSync(path.join(__dirname, '../registries.json'), JSON.stringify(registries, null, '\t'));
+
+                console.log(chalk.green(`编辑镜像${res['npm']}成功!`));
+            }
+            catch (err) {
+                console.log(chalk.red(`编辑镜像${res['npm']}失败!`));
+            }
+        })
+    }
 })
 
 program.parse();
