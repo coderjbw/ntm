@@ -14,7 +14,7 @@ const __filename = fileURLToPath(import.meta.url)
 // 获取 __dirname 的 ESM 写法
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
-let json = fs.readFileSync('../package.json', 'utf-8');
+let json = fs.readFileSync('./package.json', 'utf-8');
 json = JSON.parse(json);
 
 program.version(json.version);
