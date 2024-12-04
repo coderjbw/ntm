@@ -16,13 +16,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 
 let json = fs.readFileSync('../package.json', 'utf-8');
 json = JSON.parse(json);
-// console.log(json);
-// console.log(json.version);
 
 program.version(json.version);
-
-program
-  .option('-a, --numberA <value>', 'First number');
 
 const whiteList = [
     'npm',
@@ -64,9 +59,7 @@ program.command('use').description('选择npm镜像').action(async () => {
             choices: Object.keys(registries)
         }  
 	]).then(answers => {  
-	    console.log(answers); 
         const npmRegisty = registries[answers['npm-select']].registry;
-        console.log(npmRegisty);
 
         exec(`npm config set registry ${npmRegisty}`, null, (err, stdout, stderr) => {
             if (err) {
@@ -324,4 +317,3 @@ program.command('edit').description('重新编辑自定义的npm镜像源').acti
 })
 
 program.parse();
-console.log(program.opts());
