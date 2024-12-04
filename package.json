@@ -1,6 +1,6 @@
 {
   "name": "ntm-npm",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "main": "index.js",
   "type": "module",
   "scripts": {
@@ -10,14 +10,19 @@
   "bin": {
     "ntm": "./src/index.js"
   },
-  "keywords": ["nrm", "npm", "cnpm", "yarn"],
+  "keywords": [
+    "nrm",
+    "npm",
+    "cnpm",
+    "yarn"
+  ],
   "author": "coderjbw",
   "license": "ISC",
   "description": "A personally developed npm source library",
   "repository": {
-        "url": "https://github.com/coderjbw/ntm",
-        "type": "git"
-    },
+    "url": "https://github.com/coderjbw/ntm",
+    "type": "git"
+  },
   "dependencies": {
     "chalk": "^5.3.0",
     "commander": "^12.1.0",
